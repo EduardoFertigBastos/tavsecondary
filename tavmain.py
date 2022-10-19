@@ -25,12 +25,8 @@ def load_database():
         pd.read_feather('tavbase/regressao_segment.feather'), \
         pd.read_feather('tavbase/localizacao.feather'), \
         pd.read_feather('tavbase/estadosUS.feather')
-        # pd.read_feather('tavbase/classificacaoz_Region.feather'), \
-        # pd.read_feather('tavbase/classificacaoz_Segment.feather'), \
-
 
 base, cla_cus, cla_cat, cla_reg, cla_seg, clu_est, reg_reg, reg_seg, coords, estados = load_database()
-# base, clu_est, cla_con, reg_reg, reg_seg, coords, estados = load_database()
 
 rg_reg = reg_reg.copy()
 rg_reg['ano'] = rg_reg['ds'].dt.year
@@ -50,7 +46,7 @@ taberp, tabbi, tabstone = st.tabs([
 ])
 
 with taberp:
-    st.header('Dados do Sistema Interno')
+    st.header('Sistema Interno')
 
     # if st.checkbox('Consumidor'):
     consumidor = st.selectbox(
@@ -58,10 +54,8 @@ with taberp:
         base['Customer ID'].unique()
     )
 
-    base_con = base[base['Customer ID'] == consumidor].reset_index()
-    # st.dataframe(base_con)
+    base_con    = base[base['Customer ID'] == consumidor].reset_index()
     cla_cus_con = cla_cus[cla_cus['Customer ID'] == consumidor].reset_index()
-    # st.dataframe(cla_cus_con)
 
     st.dataframe(base_con[['Customer Name', 'Segment']].drop_duplicates())
     
@@ -71,29 +65,13 @@ with taberp:
     cl3.metric('Rank',   int(cla_cus_con['rank'][0]),       "1")
     cl4.metric('Lucro',  int(cla_cus_con['lucro'][0]),      "1")
 
-    cl1.metric(
-        'Valor Total Comprado', 
-        round(base_con['Sales'].sum(), 2), 
-        '1'
-    )
+    cl1.metric('Valor Total Comprado', round(base_con['Sales'].sum(), 2), '1')
     
-    cl2.metric(
-        'Valor Lucro', 
-        round(base_con['Profit'].sum(), 2), 
-        '1'
-    )
+    cl2.metric('Valor Lucro',          round(base_con['Profit'].sum(), 2), '1')
     
-    cl3.metric(
-        'Valor Médio Comprado', 
-        round(base_con['Sales'].mean(), 2), 
-        '1'
-    )
+    cl3.metric('Valor Médio Comprado', round(base_con['Sales'].mean(), 2), '1')
 
-    cl4.metric(
-        'Quantidade Comprada', 
-        round(base_con['Quantity'].sum(), 2), 
-        '1'
-    )
+    cl4.metric('Quantidade Comprada',  round(base_con['Quantity'].sum(), 2), '1')
 
     with st.expander('Pedidos:'):
         st.dataframe(base_con[
@@ -139,7 +117,7 @@ with taberp:
             ]
         )
 
-    with st.expander('Entregas (Mapa):'):
+    with st.expander('Entregas'):
         coords_con = base_con[
             [
                 'Order ID', 
@@ -191,7 +169,7 @@ with taberp:
 
         folium_static(m)
 
-    with st.expander('Cluster de Pedidos (Mapa):'): 
+    with st.expander('Cluster de Pedidos'): 
         data_pedidos = base.copy()
         data_pedidos = data_pedidos.merge(
             coords, 
@@ -244,7 +222,7 @@ with taberp:
 
 
 with tabbi:
-    st.header('Dados do Business Intelligence')
+    st.header('Business Intelligence')
     with st.expander('Região'):
 
         # st.dataframe(rg_reg)
@@ -288,7 +266,7 @@ with tabbi:
         
         st.altair_chart(proj + real)
 
-        if (st.checkbox('Entregas na Região (Mapa):')):
+        if (st.checkbox('Entregas na Região')):
             base_reg = base[base['Region'] == regiao].reset_index()
             coords_reg = base_reg[[
                 'Region', 
@@ -340,7 +318,7 @@ with tabbi:
                 ]
             )
 
-    with st.expander('Vendas Por Região (Mapa):'):
+    with st.expander('Vendas Por Região'):
         coords_vendas_reg = base.groupby('State')['Sales'].sum().reset_index()
         
         coords_vendas_reg = coords_vendas_reg.merge(
@@ -407,7 +385,7 @@ with tabbi:
         
         st.altair_chart(proj + real)
 
-        if (st.checkbox('Entregas do Segmento (Mapa):')):
+        if (st.checkbox('Entregas do Segmento')):
             base_seg = base[base['Segment'] == segmento].reset_index()
             coords_seg = base_seg[[
                 'Region', 
