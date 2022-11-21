@@ -1,61 +1,278 @@
 import pandas as pd
-
 import streamlit as st
 import altair as alt
+import plotly.graph_objs as go 
+import plotly.express as px 
+from streamlit_folium import folium_static 
+import folium
+from folium.plugins import MarkerCluster
 
-st.title('Projeto da Disciplina de Tópicos Avançados')
+st.title('Tópicos Avançados')
+
 
 @st.cache
-def load_databases():
-    return pd.read_feather('base2022/Sample.feather'), \
-    pd.read_feather('base2022/classificaoz_consumidor.feather'), \
-    pd.read_feather('base2022/clustericacao_pais.feather'), \
-    pd.read_feather('base2022/knn_pais.feather'), \
-    pd.read_feather('base2022/knn_produto.feather'), \
-    pd.read_feather('base2022/knn_subcategoria.feather'), \
-    pd.read_feather('base2022/probabilidade_pais.feather'), \
-    pd.read_feather('base2022/regressao_mercado.feather'), \
-    pd.read_feather('base2022/regressao_regiao.feather')
+def load_database():
+    # return pd.read_feather('tavbase/Sample.feather'), \
+    #     pd.read_feather('tavbase/classificacaoz_Customer ID.feather'), \
+    #     pd.read_feather('tavbase/classificacaoz_Category.feather'), \
+    #     pd.read_feather('tavbase/classificacaoz_Region.feather'), \
+    #     pd.read_feather('tavbase/classificacaoz_Segment.feather'), \
+    #     pd.read_feather('tavbase/clusterizacao_estado.feather'), \
+    #     pd.read_feather('tavbase/regressao_regiao.feather'), \
+    #     pd.read_feather('tavbase/regressao_segment.feather'), \
+    #     pd.read_feather('tavbase/knn_estado.feather'), \
+    #     pd.read_feather('tavbase/knn_produto.feather'), \
+    #     pd.read_feather('tavbase/knn_subcategoria.feather'), \
+    #     pd.read_feather('tavbase/knn_categoria.feather'), \
+    #     pd.read_feather('tavbase/outliers_estado.feather'), \
+    #     pd.read_feather('tavbase/probabilidade_estado.feather'), \
+    #     pd.read_feather('tavbase/localizacao.feather'), \
+    #     pd.read_feather('tavbase/estadosUS.feather')
 
-gs, cla_cli, clu_pai, knn_pai, knn_pro, knn_sub, prb_pai, reg_mer, reg_reg = load_databases()
+    return pd.read_feather('database/base.feather'), \
+        pd.read_feather('database/classificacaoz_Customer ID.feather'), \
+        pd.read_feather('database/classificacaoz_Category.feather'), \
+        pd.read_feather('database/classificacaoz_Region.feather'), \
+        pd.read_feather('database/classificacaoz_Segment.feather'), \
+        pd.read_feather('database/clusterizacao_estado.feather'), \
+        pd.read_feather('database/regressao_regiao.feather'), \
+        pd.read_feather('database/regressao_segment.feather'), \
+        pd.read_feather('database/knn_estado.feather'), \
+        pd.read_feather('database/knn_produto.feather'), \
+        pd.read_feather('database/knn_subcategoria.feather'), \
+        pd.read_feather('database/knn_categoria.feather'), \
+        pd.read_feather('database/outliers_estado.feather'), \
+        pd.read_feather('database/probabilidade_estado.feather'), \
+        pd.read_feather('database/localizacao.feather'), \
+        pd.read_feather('database/estadosUS.feather')
 
-taberp, tabbi, tabestore = st.tabs(["ERP", "BI", "eStore"])
+
+base, cla_cus, cla_cat, cla_reg, cla_seg, clu_est, reg_reg, reg_seg, knn_est, knn_pro, knn_sub, knn_cat, out_est, prb_est, coords, estados = load_database()
+
+rg_reg = reg_reg.copy()
+rg_reg['ano'] = rg_reg['ds'].dt.year
+
+rg_seg = reg_seg.copy()
+rg_seg['ano'] = rg_seg['ds'].dt.year
+
+coords = coords[coords['pais'] == 'United States']
+
+# st.dataframe(base)
+# st.dataframe(cla_cat)
+
+taberp, tabbi, tabstone = st.tabs(['Sistema Interno', 'Gestão', 'E-Commerce'])
 
 with taberp:
-    st.header('Dados para ERP')
-    consumidor = st.selectbox(
-        'Selecione o consumidor: ',
-        gs['Customer ID'].unique() 
-    )
-    gs_cli = gs[gs['Customer ID'] == consumidor].reset_index()
-    cla_con = gs_cli[gs_cli['Customer ID'] == consumidor].reset_index()
-    cli_con = cla_cli[cla_cli['Customer ID'] == consumidor].reset_index()
-    prb_con = prb_pai[prb_pai['Country'] == cla_con['Country'][0]].reset_index()
-    clu_con = clu_pai[clu_pai['referencia'] == cla_con['Country'][0]].reset_index()
-    gs_cli_pais_nome = gs_cli['Country'][0]
-    knn_con = knn_pai[knn_pai['referencia'] == gs_cli_pais_nome].reset_index()
-    st.dataframe(gs_cli[['Customer ID','Customer Name','Segment']].drop_duplicates())
-    cl1, cl2, cl3, cl4, cl5, cl6 = st.columns(6)
-    cl1.metric('Score', round(cli_con['score'][0],4), "1")
-    cl2.metric('Classe', int(cli_con['classe'][0]), "1")
-    cl3.metric('Rank', int(cli_con['rank'][0]), "1")
-    cl4.metric('Lucro', int(cli_con['Profit'][0]), "1")
-    cl5.metric('Probabilidade de Lucro', round(prb_con['lucro_1'][0],4), "1")
-    cl6.metric('Cluster', int(clu_con['cluster'][0]), "1")
-    with st.expander('Pedidos'): 
-        st.dataframe(gs_cli[['Order ID','Order Date','Product Name','Sub-Category','Category','Quantity','Sales','Profit']])               
-    col1, col2, col3, col4, col5, col6 = st.columns(6)
-    col1.metric('Lucro Total', round(gs_cli['Profit'].sum(),2), "1")
-    col2.metric('Vendas Total', round(gs_cli['Profit'].sum(),2), "1")
-    col3.metric('Média Lucro', round(gs_cli['Profit'].mean(),2), "1")
-    col4.metric('Média Itens', round(gs_cli['Profit'].mean(),2), "1")
-    col5.metric('Quantidade', int(gs_cli['Profit'].count()), "1")
-    col6.metric('Média Desconto', round(gs_cli['Discount'].mean(),2), "1")
-    with st.expander('dados de mercado'):
-        st.dataframe(gs_cli[['City','State','Country','Region','Market']].drop_duplicates())
-        st.dataframe(cli_con[['zProfit','zSales','zQuantity']])
-with tabbi:
-    st.header('Dados para BI')
-with tabestore:
-    st.header('Dados para E-commerce') 
+    st.header('Dados do Sistema Interno')
 
+    # if st.checkbox('Consumidor'):
+    consumidor = st.selectbox('Selecione o Consumidor',
+                              base['Customer ID'].unique())
+    base_con = base[base['Customer ID'] == consumidor].reset_index()
+    # st.dataframe(base_con)
+    cla_cus_con = cla_cus[cla_cus['Customer ID'] == consumidor].reset_index()
+    # st.dataframe(cla_cus_con)
+
+    # st.dataframe(knn_est)
+    with st.expander('Estados similares'):
+        st.write(base_con['State'][0])
+        st.dataframe(knn_est[knn_est['referencia'] == base_con['State'][0]]) 
+        st.write('Probabilidade:')
+        st.dataframe(prb_est[prb_est['State'] == base_con['State'][0]])
+
+    st.dataframe(base_con[['Customer Name', 'Segment']].drop_duplicates())
+    cl1, cl2, cl3, cl4 = st.columns(4)
+    cl1.metric('Score', round(cla_cus_con['score'][0], 4), "1")
+    cl2.metric('Classe', int(cla_cus_con['classe'][0]), "1")
+    cl3.metric('Rank', int(cla_cus_con['rank'][0]), "1")
+    cl4.metric('Lucro', int(cla_cus_con['lucro'][0]), "1")
+
+    cl1.metric('Valor Total Comprado', round(base_con['Sales'].sum(), 2), '1')
+    cl2.metric('Valor Lucro', round(base_con['Profit'].sum(), 2), '1')
+    cl3.metric('Valor Médio Comprado', round(base_con['Sales'].mean(), 2), '1')
+    cl4.metric('Quantidade Comprada', round(
+        base_con['Quantity'].sum(), 2), '1')
+    with st.expander('Pedidos:'):
+        st.dataframe(
+            base_con[['Order Date', 'Product Name', 'Quantity', 'Sales', 'Profit']])
+
+    with st.expander('Cluster Estado:'):
+        clu_est_cus = clu_est[clu_est['reference']
+                              == base_con['State'].values[0]]
+        st.dataframe(clu_est_cus[['cluster', 'm_sales', 'm_profit',
+                     'm_quantity', 'r_days', 'f_sales', 'f_profit']])
+        st.dataframe(clu_est_cus[['cluster', 'clm_sales', 'clm_profit',
+                     'clm_quantity', 'clr_days', 'clf_sales', 'clf_profit']])
+
+    with st.expander('Entregas (Mapa):'):
+        coords_con = base_con[['Order ID', 'Order Date',
+                               'Ship Date', 'Region', 'State', 'City', 'Profit']].copy()
+        coords_con = coords_con.merge(
+            coords, left_on=['City'], right_on=['cidade'], how='left')
+        coords_con = coords_con.rename(columns={
+            'lng': 'lon'
+        })
+        st.dataframe(
+            coords_con[['Order ID', 'Order Date', 'Ship Date', 'Region', 'State', 'City']])
+        st.map(coords_con)
+
+        m = folium.Map(location=[0, 0], tiles='openstreetmap', zoom_start=2)
+        for id,row in coords_con.iterrows():
+            folium.Marker(location=[row['lat'],row['lon']], popup=row['Profit']).add_to(m)
+        folium_static(m)
+
+    with st.expander('Cluster de Pedidos (Mapa):'): 
+        data_pedidos = base.copy()
+        data_pedidos = data_pedidos.merge(coords, left_on=['City'], right_on=['cidade'], how='left')
+        data_pedidos = data_pedidos.fillna(0) 
+
+        m2 = folium.Map(location=[0,0], tiles='cartodbpositron', zoom_start=2)
+        mc = MarkerCluster()
+        for idx, row in data_pedidos.iterrows():
+            mc.add_child(folium.Marker([row['lat'], row['lng']],popup=row['State']))
+        m2.add_child(mc)
+        folium_static(m2) 
+
+    # if st.checkbox('Categoria'):
+
+    #     categoria = st.selectbox('Selecione a Categoria', base['Category'].unique())
+    #     base_cat = base[base['Category'] == categoria].reset_index()
+    #     # st.dataframe(base_con)
+    #     cla_cat_cat = cla_cat[cla_cat['Category'] == categoria].reset_index()
+    #     # st.dataframe(cla_cat_cat)
+
+    #     st.dataframe(base_cat[['Category']].drop_duplicates())
+    #     cl1, cl2, cl3, cl4 = st.columns(4)
+    #     cl1.metric('Score', round(cla_cat_cat['score'][0],4), "1")
+    #     cl2.metric('Classe', int(cla_cat_cat['classe'][0]), "1")
+    #     cl3.metric('Rank', int(cla_cat_cat['rank'][0]), "1")
+    #     cl4.metric('Lucro', int(cla_cat_cat['lucro'][0]), "1")
+
+    #     cl1.metric('Valor Total Comprado', round(base_cat['Sales'].sum(), 2), '1')
+    #     cl2.metric('Valor Lucro', round(base_cat['Profit'].sum(), 2), '1')
+    #     cl3.metric('Valor Médio Comprado', round(base_cat['Sales'].mean(), 2), '1')
+    #     cl4.metric('Quantidade Comprada', round(base_cat['Quantity'].sum(), 2), '1')
+    #     with st.expander('Pedidos:'):
+    #         st.dataframe(base_cat[['Order Date', 'Sub-Category', 'Product Name', 'Quantity', 'Sales', 'Profit']])
+
+
+with tabbi:
+    st.header('Dados do Business Intelligence')
+    with st.expander('Região'):
+
+        # st.dataframe(rg_reg)
+
+        aggr = st.selectbox('Agregador Região', ['sum', 'mean'])
+        st.dataframe(rg_reg.pivot_table(index='Region', columns='ano',
+                     values='yhat', aggfunc=aggr, fill_value=0))
+
+        if st.checkbox('Detalhar Região'):
+            regiao = st.selectbox('Região:', rg_reg['Region'].unique())
+            gr_reg = rg_reg[rg_reg['Region'] == regiao].groupby(
+                'ano')['yhat'].sum().reset_index()
+            proj = alt.Chart(gr_reg).mark_line(
+                color='blue').encode(x='ano', y='yhat')
+            gr_base = base[base['Region'] == regiao].groupby(
+                'OYear')['Sales'].sum().reset_index()
+            real = alt.Chart(gr_base).mark_line(
+                color='red').encode(x='OYear', y='Sales')
+            st.altair_chart(proj + real)
+
+        if (st.checkbox('Entregas na Região (Mapa):')):
+            base_reg = base[base['Region'] == regiao].reset_index()
+            coords_reg = base_reg[['Region', 'State', 'City']].copy().drop_duplicates().reset_index()
+            coords_reg = coords_reg.merge(
+                coords, left_on=['City'], right_on=['cidade'], how='left')
+            coords_reg = coords_reg.rename(columns={
+                'lng': 'lon'
+            })
+            coords_reg_undefined = coords_reg[coords_reg['lat'].isna()]
+            coords_reg = coords_reg[coords_reg['lat'] > 0]
+
+            st.map(coords_reg)
+
+            if (st.checkbox('Registros não reconhecidos para a Região: ')):
+                st.dataframe(
+                    coords_reg_undefined[['Region', 'State', 'City', 'lat', 'lon']])
+
+            st.dataframe(base_reg[['Order ID', 'Order Date', 'Ship Date', 'Ship Mode',
+                         'Customer ID', 'Customer Name', 'Segment', 'City', 'Sales', 'Profit']])
+
+    with st.expander('RFM/Outliers'):
+        out_estado = st.multiselect('Estados:', base['State'].unique())
+        st.dataframe(out_est[out_est['referencia'].isin(out_estado)])
+
+    with st.expander('Vendas Por Região (Mapa):'):
+        coords_vendas_reg = base.groupby('State')['Sales'].sum().reset_index()
+        coords_vendas_reg = coords_vendas_reg.merge(estados, left_on=['State'], right_on=['name'], how='left')
+        coords_vendas_reg.drop(columns=['name'])
+
+        fig = px.choropleth(coords_vendas_reg,locations='usps',locationmode='USA-states',color='Sales')
+        fig.update_layout(title='Vendas por Estado', geo_scope='usa', template="plotly_dark")
+        st.plotly_chart(fig)
+        
+
+    with st.expander('Segmento'):
+
+        # st.dataframe(rg_seg)
+
+        aggs = st.selectbox('Agregador Segmento', ['sum', 'mean'])
+        st.dataframe(rg_seg.pivot_table(index='Segment',
+                     columns='ano', values='yhat', aggfunc=aggs, fill_value=0))
+
+        # if st.checkbox('Detalhar Segmento'):
+        segmento = st.selectbox('Segmento:', rg_seg['Segment'].unique())
+        gr_seg = rg_seg[rg_seg['Segment'] == segmento].groupby(
+            'ano')['yhat'].sum().reset_index()
+        proj = alt.Chart(gr_seg).mark_line(
+            color='blue').encode(x='ano', y='yhat')
+        gr_base = base[base['Segment'] == segmento].groupby(
+            'OYear')['Sales'].sum().reset_index()
+        real = alt.Chart(gr_base).mark_line(
+            color='red').encode(x='OYear', y='Sales')
+        st.altair_chart(proj + real)
+
+        if (st.checkbox('Entregas do Segmento (Mapa):')):
+            base_seg = base[base['Segment'] == segmento].reset_index()
+            coords_seg = base_seg[['Region', 'State', 'City']
+                                  ].copy().drop_duplicates().reset_index()
+            coords_seg = coords_seg.merge(
+                coords, left_on=['City'], right_on=['cidade'], how='left')
+            coords_seg = coords_seg.rename(columns={
+                'lng': 'lon'
+            })
+            coords_seg_undefined = coords_seg[coords_seg['lat'].isna()]
+            coords_seg = coords_seg[coords_seg['lat'] > 0]
+
+            st.dataframe(coords_seg)
+            st.map(coords_seg)
+
+            if (st.checkbox('Registros não reconhecidos para o segmento: ')):
+                st.dataframe(
+                    coords_seg_undefined[['Region', 'State', 'City', 'lat', 'lon']])
+
+            coords_vendas_seg = base_seg.groupby('State')['Sales'].sum().reset_index()
+            coords_vendas_seg = coords_vendas_seg.merge(estados, left_on=['State'], right_on=['name'], how='left')
+            coords_vendas_seg.drop(columns=['name'])
+            fig = px.choropleth(coords_vendas_seg,locations='usps',locationmode='USA-states',color='Sales')
+            fig.update_layout(title='Vendas por Estado', geo_scope='usa', template="plotly_dark")
+            st.plotly_chart(fig)
+
+            st.dataframe(base_seg[['Order ID', 'Order Date', 'Ship Date', 'Ship Mode',
+                         'Customer ID', 'Customer Name', 'Region', 'City', 'Sales', 'Profit']])
+
+with tabstone:
+    st.header('Dados do Comércio Eletrônico')
+    consumidor = st.selectbox('Selecione o Consumidor: ', base['Customer ID'].unique())
+    cliente = base[base['Customer ID'] == consumidor][['Product ID', 'Product Name', 'Sub-Category']].reset_index()
+    # st.dataframe(cliente)
+    for subcategoria in cliente['Sub-Category'].unique():
+        st.info(subcategoria)
+        st.warning('Similares')
+        for idx, rw in knn_sub[knn_sub['referencia'] == subcategoria].iterrows():
+            st.error(rw['vizinho'])
+    for index, row in cliente.iterrows():
+        st.info('{0}({1})'.format(row['Product Name'], row['Product ID']))
+        st.warning('Similares')
+        for idx, rw in knn_pro[knn_pro['referencia'] == row['Product Name']].iterrows():
+            st.error(rw['vizinho'])
